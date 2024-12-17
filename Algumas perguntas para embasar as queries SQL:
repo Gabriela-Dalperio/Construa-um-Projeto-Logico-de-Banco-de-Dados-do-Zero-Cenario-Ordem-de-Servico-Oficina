@@ -1,0 +1,122 @@
+use oficina;
+
+-- Buscar por clientes e seus respectivos veículos
+SELECT 
+  	concat(W.Fname,' ',W.Lname) as cliente,
+    v.Brand, 
+    v.model, 
+	  v.V_Year,
+    v.Plate
+FROM wclient W
+JOIN vehicles v ON v.idVehicleWClient = w.idWClient;
+
+-- Buscar por clientes, seus respectivos veículos e aplicar um busca de acordo com a marca e o ano do veículo
+SELECT 
+  	concat(W.Fname,' ',W.Lname) as cliente,
+    v.Brand, 
+    v.model, 
+  	v.V_Year,
+    v.Plate
+FROM wclient W
+JOIN vehicles v ON v.idVehicleWClient = w.idWClient
+WHERE v.Brand = 'Chevrolet'AND v.V_year <= 2000;
+
+-- Listar todos os clientes e modelo de veículo que as ordens de serviço estão pendentes
+SELECT 
+  	concat(W.Fname,' ',W.Lname) as Cliente,
+  	v.model as Modelo,
+  	os.ostype as Ordem_De_Serviço,
+    os.data_criacao,
+    os.OSstatus as Status,
+    os.autorizacao_cliente as Autorização
+FROM wclient w
+JOIN vehicles v ON v.idVehicleWClient = w.idWClient
+JOIN OS ON  os.idOSVehicle = v.idVehicle
+WHERE os.OSstatus = 'Pendente';
+
+-- Consultar o total de receita gerada por serviços em um período específico
+SELECT 
+  	SUM(p.price) AS total_receita
+FROM performs p
+JOIN OS ON p.idOSperforms = OS.idOS
+WHERE OS.data_criacao BETWEEN '2024-01-01' AND '2024-12-31';
+
+-- Contar quantas ordens de serviço cada funcionário tem atribuídas
+SELECT 
+	  Concat (m.Fname,' ', m.Lname) as Mecânico, 
+    COUNT(OS.idOS) AS total_ordens
+FROM mechanic m
+JOIN team_mechanic t ON m.idMechanic = t.idMechanicT
+JOIN team ON team.idTeam = t.idTeamM
+JOIN os_team ON os_team.idTeamOS = team.idTeam
+JOIN OS ON OS.idOS = os_team.idOST
+GROUP BY m.idMechanic;
+
+-- Contar quantas ordens de serviço cada mecânico tem atribuídas, mas apenas mostrar aqueles com mais de 4 ordens de serviço
+SELECT 
+	  Concat (m.Fname,' ', m.Lname) as Mecânico, 
+    COUNT(OS.idOS) AS total_ordens
+FROM Mechanic m
+JOIN team_mechanic t ON m.idMechanic = t.idMechanicT
+JOIN team ON team.idTeam = t.idTeamM
+JOIN os_team ON os_team.idTeamOS = team.idTeam
+JOIN OS ON OS.idOS = os_team.idOST
+GROUP BY m.idMechanic
+HAVING COUNT(OS.idOS) > 4;
+
+-- Consultar o total de receita gerada por serviços, mas apenas para ordens de serviço com preço total superior a 400
+SELECT 
+	  OS.idOS, 
+    SUM(performs.price) AS total_receita
+FROM performs
+JOIN OS ON performs.idOSperforms = OS.idOS
+GROUP BY OS.idOS
+HAVING SUM(performs.price) > 400;
+
+
+-- Consultar mecânicos que têm ordens de serviço concluídas e a quantidade de ordens, mas só mostrar aqueles que tê 1 ordem concluída
+SELECT 
+	  Concat (m.Fname,' ', m.Lname) as Mecânico, 
+    COUNT(OS.idOS) AS ordens_concluidas
+FROM mechanic m
+JOIN team_mechanic t ON m.idMechanic = t.idMechanicT
+JOIN team ON team.idTeam = t.idTeamM
+JOIN os_team ON os_team.idTeamOS = team.idTeam
+JOIN OS ON OS.idOS = os_team.idOST
+WHERE OS.OSstatus = 'Concluída'
+GROUP BY m.idMechanic
+HAVING COUNT(OS.idOS) = 1;
+
+-- Quantidade e preço das peças gastas nas ordens de serviço
+SELECT 
+	  OS.idOS, 
+    p.Ptype as Tipo_de_Peça, 
+    SUM(U.Quantity) AS Qtde_total, 
+    SUM(U.Quantity * U.Uvalue) AS Peço_total
+FROM Utiliza u
+JOIN OS ON U.idUtilizaOS = OS.idOS
+JOIN parts p ON U.idUtilizaParts = p.idParts
+GROUP BY OS.idOS, p.Ptype;
+
+-- Valor total (quantidade de peças + serviço) de cada cliente que autorizou a ordem de serviço
+SELECT 
+	  Concat (w.Fname,' ', w.Lname) as cliente, 
+    SUM(U.Quantity * U.Uvalue) + SUM(p.price) AS valor_total
+FROM authorization a
+JOIN wclient w ON a.idAuthorizationWClient = w.idWClient
+JOIN OS ON a.idAuthorizationOS = OS.idOS
+JOIN performs p ON OS.idOS = p.idOSperforms
+LEFT JOIN Utiliza u ON OS.idOS = U.idUtilizaOS
+WHERE a.Authorization_Status = 'Aprovada'
+GROUP BY w.idWClient;
+
+-- Quantidade de ordens de serviço de cada status (Aprovada, Concluída, Pendente) para cada equipe
+SELECT 
+    team.TName AS Equipe,
+    COUNT(CASE WHEN OS.OSstatus = 'Aprovada' THEN 1 END) AS Aprovada,
+    COUNT(CASE WHEN OS.OSstatus = 'Concluída' THEN 1 END) AS Concluida,
+    COUNT(CASE WHEN OS.OSstatus = 'Pendente' THEN 1 END) AS Pendente
+FROM os_team
+JOIN team ON os_team.idTeamOS = team.idTeam
+JOIN OS ON os_team.idOST = OS.idOS
+GROUP BY team.idTeam;
