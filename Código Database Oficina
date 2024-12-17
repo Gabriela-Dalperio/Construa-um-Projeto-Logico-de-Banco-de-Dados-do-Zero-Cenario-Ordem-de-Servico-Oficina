@@ -1,0 +1,125 @@
+-- criação do banco de dados para o cenário de Ordem de Serviço de Oficina
+
+-- create database Oficina;
+-- use Oficina;
+
+-- criar tabela CLIENTE
+create table wclient(
+	idWClient int auto_increment primary key,
+    Fname varchar(15) not null,
+    Lname varchar (20) not null,
+	Contact varchar (14) not null,
+    Email varchar (100),
+    Adreess varchar (255)
+);
+alter table wclient auto_increment=1;
+
+-- criar tabela VEÍCULO
+create table vehicles(
+	idVehicle int auto_increment primary key,
+    idVehicleWClient int,
+    Plate varchar(10) not null,
+    Model varchar (30) not null,
+    Brand varchar (30) not null,
+    V_Year int not null,
+    constraint fk_vehicle_client foreign key (idVehicleWClient) references wclient (idWClient)
+);
+alter table vehicles auto_increment=1;
+
+-- criar tabela MECÂNICO
+create table mechanic(
+	idMechanic int auto_increment primary key,
+    Fname varchar(15) not null,
+    Lname varchar (20),
+    Specialty varchar (30),
+    Contact varchar (14) not null,
+    Adreess varchar (255)
+);
+alter table mechanic auto_increment=1;
+
+-- criar tabela EQUIPE
+create table team(
+	idTeam int auto_increment primary key,
+    TName varchar (40) not null
+);
+alter table team auto_increment=1;
+
+-- criar tabela associativa EQUIPE e MECÂNICO
+create table team_mechanic(
+	idTeamM int,
+    idMechanicT int,
+    primary key (idTeamM, idMechanicT),
+	constraint fk_team_mechanic_team foreign key (idTeamM) references team (idTeam),
+    constraint fk_team_mechanic_mechanic foreign key (idMechanicT) references mechanic (idMechanic)
+);
+
+-- criar tabela ORDEM DE SERVIÇO
+create table OS(
+	idOS int auto_increment primary key,
+    idOSVehicle int,
+    OSType varchar (255) not null,
+    data_criacao date not null,
+    data_conclusao date,
+    OSstatus ENUM('Pendente', 'Aprovada', 'Concluída') not null default 'Pendente',
+    autorizacao_cliente boolean default false,
+    constraint fk_os_vehicle foreign key (idOSVehicle) references vehicles (idVehicle)
+);
+alter table os auto_increment=1;
+
+-- criar tabela associativa OS e EQUIPE
+create table os_team(
+	idOST int,
+    idTeamOS int,
+    primary key (idOST, idTeamOS),
+    constraint fk_os_team_os foreign key (idOST) references OS (idOS),
+    constraint fk_os_team_team foreign key (idTeamOS) references team (idTeam)
+);
+
+-- criar tabela AUTORIZAÇÃO
+create table authorization(
+	idAuthorization int auto_increment primary key,
+    idAuthorizationWClient int,
+    idAuthorizationOS int,
+    Authorization_Status ENUM('Pendente', 'Aprovada', 'Cancelada') not null default 'Pendente',
+    data_authorization date,
+    constraint fk_authorization_wclient foreign key (idAuthorizationWClient) references wclient (idWClient),
+    constraint fk_authorization_os foreign key (idAuthorizationOS) references OS (idOS)
+);
+alter table authorization auto_increment=1;
+
+-- criar tabela PEÇAS
+create table parts(
+	idParts int auto_increment primary key,
+    Ptype varchar(50) not null,
+    PDescription varchar (255),
+    PValue decimal (10,2) not null
+);
+alter table parts auto_increment=1;
+
+-- criar tabela associativa OS e PEÇAS
+create table Utiliza (
+	idUtilizaOS int,
+    idUtilizaParts int,
+    Quantity int not null, 
+    Uvalue decimal (10,2) not null,
+    constraint fk_Utiliza_OS foreign key (idUtilizaOS) references OS (idOS),
+    constraint fk_Utiliza_Parts foreign key (idUtilizaParts) references parts (idParts)
+);
+
+-- criar tabela SERVIÇO
+create table service(
+	idService int auto_increment primary key,
+    Sdescription varchar(255) not null,
+    price decimal (10,2) not null
+);
+alter table service auto_increment=1;
+
+-- criar tabela associativa SERVIÇO e OS
+create table performs(
+	idOSperforms int,
+    idServicePerforms int,
+    price decimal (10,2) not null,
+    Estimated_time time,
+	constraint fk_performs_OS foreign key (idOSperforms) references OS (idOS),
+    constraint fk_performs_service foreign key (idServicePerforms) references Service (idService)
+);
